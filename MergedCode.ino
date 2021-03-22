@@ -32,9 +32,8 @@ static int minSpeed = 90;
 static int maxSpeed = 255;
 
 boolean needTurn;
-boolean EL; //error left - need to turn right.
-boolean ER; //error right - need to turn left.
-boolean EB; // error both - reverse.
+boolean EL = 0; //error left - need to turn right.
+boolean ER = 0; //error right - need to turn left.
 boolean inError;
 int errors[10];
 
@@ -88,28 +87,50 @@ if(motor == 'l' || motor == 'L') {
 } 
 }
 
+void errorCheck() {//prototype
+  read_sensor1();
+  read_sensor2();
+  if (area != color1) {
+    ER = true;
+  } else {
+    ER = false;
+  }
+  if (area != color2) {
+    EL = true;
+  } else {
+    EL = false;
+  }
+  
+  Serial.print("EL is   ");
+  Serial.print(EL);
+  Serial.print("    ER is   ");
+  Serial.println(ER);
+}
 
 boolean errorCorrection() { // doesn't acturally return anything meaningful rhe return is just used to break out of the function
+  errorCheck();
     if(EL && ER) { // both sensors off track
+         Serial.println("correcting ER && EL");
     while(ER && EL) { // while both sensors are off track 
-     move('l', -250);
-     move('r', -250);
-     if(!EL || !ER) 
-     return true;
+      errorCheck();
+      move('l', -250);
+      move('r', -250);
+      if(!EL || !ER) 
+      return true;
     }
   } else if(EL) { //only the left sensor is off track
-     while(EL && !ER) { // while both sensors are off track 
-     move('l', 250);
-     move('r', 0); 
-     if(!EL)
-     return true;
+       Serial.println("correcting EL");
+     while(EL && !ER) { // while only the left sensor is off track
+      errorCheck();
+      move('l', 250);
+      move('r', 0); 
     }
   } else if(ER) { //only the left sensor is off track
-     while(!EL && ER) { // while both sensors are off track 
+    Serial.println("correcting ER");
+     while(!EL && ER) { // while only right sensor is off track
+      errorCheck();s
      move('l', 0);
      move('r', 250); 
-     if(!ER)
-     return true;
     }
   }
 }
@@ -211,6 +232,7 @@ void goForwards() {
   digitalWrite(in2, LOW);
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
+  Serial.println("moving");
 }
   
 
@@ -252,7 +274,7 @@ if(redColor > 400){
 Serial.print("|BLACK||");
 color1 = 0;
   }
-else if(blueColor < 65 && greenColor < 95){
+else if(blueColor < 65 && greenColor < 95 && blueColor < greenColor && blueColor < redColor){
 Serial.print("|WHITE||");
 color1 = 4; 
   }
@@ -311,23 +333,23 @@ void read_sensor2(){
   blueColor = pulseIn(sensorOut_2, LOW);
   
 if(redColor > 400){
-Serial.println("|BLACK||");
+Serial.print("|BLACK||");
 color2 = 0;
   }
-else if(blueColor < 65 && greenColor < 95){
-Serial.println("|WHITE||");
+else if(blueColor < 65 && greenColor < 95 && blueColor < greenColor && blueColor < redColor){
+Serial.print("|WHITE||");
 color2 = 4; 
   }
 else if(blueColor < 112 && greenColor < 95){
-Serial.println("|YELLOW||");
+Serial.print("|YELLOW||");
 color2 = 3;
   }
 else if(redColor < greenColor && redColor < blueColor && redColor < 200){
-Serial.println("| RED ||");
+Serial.print("| RED ||");
 color2 = 1;
   }
 else if(blueColor < greenColor && blueColor < redColor && blueColor < 115){
-Serial.println("| BLUE||");
+Serial.print("| BLUE||");
 color2 = 2;
 }
 Serial.print("   2   |   ");
@@ -391,22 +413,19 @@ void setup() {
 }
 
 void loop() {
-goForwards();
-if(area != color1)
-ER = true;
-else {
-  ER = false;
-}
 
-if (area != color2)
-EL = true;
-else {
-  EL = false;
-}
-  read_sensor1();
-  read_sensor2();
-  Serial.print("color1 is");
+goForwards();
+
+errorCheck();
+if(ER || EL)
+errorCorrection();
+
+  Serial.print("color1 is ");
   Serial.println(color1);
-  Serial.print("color 2 is");
+  Serial.print("color 2 is ");
   Serial.println(color2);
+  Serial.print("EL is  ");
+  Serial.print(EL);
+  Serial.print("       ER is  ");
+  Serial.println(ER);
 }
